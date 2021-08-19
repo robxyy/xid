@@ -1,3 +1,3 @@
-module github.com/rs/xid
+module github.com/robxyy/xid
 
 go 1.12
