@@ -3,21 +3,20 @@
 // Xid is using Mongo Object ID algorithm to generate globally unique ids:
 // https://docs.mongodb.org/manual/reference/object-id/
 //
-//   - 4-byte value representing the seconds since the Unix epoch,
+//   - 5-byte value representing the seconds since the Unix epoch,
 //   - 3-byte machine identifier,
 //   - 2-byte process id, and
 //   - 3-byte counter, starting with a random value.
 //
-// The binary representation of the id is compatible with Mongo 12 bytes Object IDs.
 // The string representation is using base32 hex (w/o padding) for better space efficiency
-// when stored in that form (20 bytes). The hex variant of base32 is used to retain the
+// when stored in that form (21 bytes). The hex variant of base32 is used to retain the
 // sortable property of the id.
 //
 // Xid doesn't use base64 because case sensitivity and the 2 non alphanum chars may be an
 // issue when transported as a string between various systems. Base36 wasn't retained either
 // because 1/ it's not standard 2/ the resulting size is not predictable (not bit aligned)
-// and 3/ it would not remain sortable. To validate a base32 `xid`, expect a 20 chars long,
-// all lowercase sequence of `a` to `v` letters and `0` to `9` numbers (`[0-9a-v]{20}`).
+// and 3/ it would not remain sortable. To validate a base32 `xid`, expect a 21 chars long,
+// all lowercase sequence of `a` to `v` letters and `0` to `9` numbers (`[0-9a-v]{21}`).
 //
 // UUID is 16 bytes (128 bits), snowflake is 8 bytes (64 bits), xid stands in between
 // with 12 bytes with a more compact string representation ready for the web and no
@@ -25,7 +24,7 @@
 //
 // Features:
 //
-//   - Size: 12 bytes (96 bits), smaller than UUID, larger than snowflake
+//   - Size: 13 bytes (104 bits), smaller than UUID, larger than snowflake
 //   - Base32 hex encoded by default (16 bytes storage when transported as printable string)
 //   - Non configured, you don't need set a unique machine and/or data center id
 //   - K-ordered
@@ -64,8 +63,8 @@ import (
 type ID [rawLen]byte
 
 const (
-	encodedLen = 20 // string encoded len
-	rawLen     = 12 // binary raw len
+	encodedLen = 21 // string encoded len
+	rawLen     = 13 // binary raw len
 
 	// encoding stores a custom version of the base32 encoding with lower case
 	// letters.
@@ -150,20 +149,26 @@ func New() ID {
 // NewWithTime generates a globally unique ID with the passed in time
 func NewWithTime(t time.Time) ID {
 	var id ID
-	// Timestamp, 4 bytes, big endian
-	binary.BigEndian.PutUint32(id[:], uint32(t.Unix()))
+	// Timestamp, 5 bytes, big endian
+	_ = id[4]
+	secs := t.Unix()
+	id[0] = byte(secs >> 32)
+	id[1] = byte(secs >> 24)
+	id[2] = byte(secs >> 16)
+	id[3] = byte(secs >> 8)
+	id[4] = byte(secs)
 	// Machine, first 3 bytes of md5(hostname)
-	id[4] = machineID[0]
-	id[5] = machineID[1]
-	id[6] = machineID[2]
+	id[5] = machineID[0]
+	id[6] = machineID[1]
+	id[7] = machineID[2]
 	// Pid, 2 bytes, specs don't specify endianness, but we use big endian.
-	id[7] = byte(pid >> 8)
-	id[8] = byte(pid)
+	id[8] = byte(pid >> 8)
+	id[9] = byte(pid)
 	// Increment, 3 bytes, big endian
 	i := atomic.AddUint32(&objectIDCounter, 1)
-	id[9] = byte(i >> 16)
-	id[10] = byte(i >> 8)
-	id[11] = byte(i)
+	id[10] = byte(i >> 16)
+	id[11] = byte(i >> 8)
+	id[12] = byte(i)
 	return id
 }
 
@@ -181,7 +186,7 @@ func (id ID) String() string {
 	return *(*string)(unsafe.Pointer(&text))
 }
 
-// Encode encodes the id using base32 encoding, writing 20 bytes to dst and return it.
+// Encode encodes the id using base32 encoding, writing 21 bytes to dst and return it.
 func (id ID) Encode(dst []byte) []byte {
 	encode(dst, id[:])
 	return dst
@@ -207,10 +212,11 @@ func (id ID) MarshalJSON() ([]byte, error) {
 
 // encode by unrolling the stdlib base32 algorithm + removing all safe checks
 func encode(dst, id []byte) {
-	_ = dst[19]
+	_ = dst[20]
 	_ = id[11]
 
-	dst[19] = encoding[(id[11]<<4)&0x1F]
+	dst[20] = encoding[(id[12]<<1)&0x1F]
+	dst[19] = encoding[(id[12]>>4)&0x1F|(id[11]<<4)&0x1F]
 	dst[18] = encoding[(id[11]>>1)&0x1F]
 	dst[17] = encoding[(id[11]>>6)&0x1F|(id[10]<<2)&0x1F]
 	dst[16] = encoding[id[10]>>3]
@@ -262,9 +268,9 @@ func (id *ID) UnmarshalJSON(b []byte) error {
 
 // decode by unrolling the stdlib base32 algorithm + removing all safe checks
 func decode(id *ID, src []byte) {
-	_ = src[19]
-	_ = id[11]
-
+	_ = src[20]
+	_ = id[12]
+	id[12] = dec[src[19]]<<4 | dec[src[20]]>>1
 	id[11] = dec[src[17]]<<6 | dec[src[18]]<<1 | dec[src[19]]>>4
 	id[10] = dec[src[16]]<<3 | dec[src[17]]>>2
 	id[9] = dec[src[14]]<<5 | dec[src[15]]
@@ -282,27 +288,27 @@ func decode(id *ID, src []byte) {
 // Time returns the timestamp part of the id.
 // It's a runtime error to call this method with an invalid id.
 func (id ID) Time() time.Time {
-	// First 4 bytes of ObjectId is 32-bit big-endian seconds from epoch.
-	secs := int64(binary.BigEndian.Uint32(id[0:4]))
+	// First 5 bytes of ObjectId is 32-bit big-endian seconds from epoch.
+	secs := int64(id[4]) | int64(id[3])<<8 | int64(id[2])<<16 | int64(id[1])<<24 | int64(id[0])<<32
 	return time.Unix(secs, 0)
 }
 
 // Machine returns the 3-byte machine id part of the id.
 // It's a runtime error to call this method with an invalid id.
 func (id ID) Machine() []byte {
-	return id[4:7]
+	return id[5:8]
 }
 
 // Pid returns the process id part of the id.
 // It's a runtime error to call this method with an invalid id.
 func (id ID) Pid() uint16 {
-	return binary.BigEndian.Uint16(id[7:9])
+	return binary.BigEndian.Uint16(id[8:10])
 }
 
 // Counter returns the incrementing value part of the id.
 // It's a runtime error to call this method with an invalid id.
 func (id ID) Counter() int32 {
-	b := id[9:12]
+	b := id[10:13]
 	// Counter is stored as big-endian 3-byte value
 	return int32(uint32(b[0])<<16 | uint32(b[1])<<8 | uint32(b[2]))
 }
