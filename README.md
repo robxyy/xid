@@ -2,10 +2,12 @@
 
 [![godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/robxyy/xid) [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/robxyy/xid/master/LICENSE) [![Build Status](https://travis-ci.org/robxyy/xid.svg?branch=master)](https://travis-ci.org/robxyy/xid) [![Coverage](http://gocover.io/_badge/github.com/robxyy/xid)](http://gocover.io/github.com/robxyy/xid)
 
+> ⚠️ _This xid is not compatible with Mongo Object ID_
+
 Package xid is a globally unique id generator library, ready to safely be used directly in your server code.
 
-Xid uses the Mongo Object ID algorithm to generate globally unique ids with a different serialization (base64) to make it shorter when transported as a string:
-https://docs.mongodb.org/manual/reference/object-id/
+~~Xid uses the Mongo Object ID algorithm to generate globally unique ids with a different serialization (base64) to make it shorter when transported as a string:
+https://docs.mongodb.org/manual/reference/object-id/~~
 
 - 5-byte value representing the seconds since the Unix epoch,
 - 3-byte machine identifier,
@@ -51,8 +53,8 @@ Features:
 - Unicity guaranteed for 16,777,216 (24 bits) unique ids per second and per host/process
 - Lock-free (i.e.: unlike UUIDv1 and v2)
 
-Best used with [zerolog](https://github.com/rs/zerolog)'s
-[RequestIDHandler](https://godoc.org/github.com/rs/zerolog/hlog#RequestIDHandler).
+~~Best used with [zerolog](https://github.com/rs/zerolog)'s
+[RequestIDHandler](https://godoc.org/github.com/rs/zerolog/hlog#RequestIDHandler).~~
 
 Notes:
 
@@ -63,11 +65,11 @@ References:
 - http://www.slideshare.net/davegardnerisme/unique-id-generation-in-distributed-systems
 - https://en.wikipedia.org/wiki/Universally_unique_identifier
 - https://blog.twitter.com/2010/announcing-snowflake
-- Python port by [Graham Abbott](https://github.com/graham): https://github.com/graham/python_xid
-- Scala port by [Egor Kolotaev](https://github.com/kolotaev): https://github.com/kolotaev/ride
-- Rust port by [Jérôme Renard](https://github.com/jeromer/): https://github.com/jeromer/libxid
-- Ruby port by [Valar](https://github.com/valarpirai/): https://github.com/valarpirai/ruby_xid
-- Java port by [0xShamil](https://github.com/0xShamil/): https://github.com/0xShamil/java-xid
+- ~~Python port by [Graham Abbott](https://github.com/graham): https://github.com/graham/python_xid~~
+- ~~Scala port by [Egor Kolotaev](https://github.com/kolotaev): https://github.com/kolotaev/ride~~
+- ~~Rust port by [Jérôme Renard](https://github.com/jeromer/): https://github.com/jeromer/libxid~~
+- ~~Ruby port by [Valar](https://github.com/valarpirai/): https://github.com/valarpirai/ruby_xid~~
+- ~~Java port by [0xShamil](https://github.com/0xShamil/): https://github.com/0xShamil/java-xid~~
 
 ## Install
 
