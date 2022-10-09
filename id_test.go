@@ -131,6 +131,10 @@ func TestFromStringInvalid(t *testing.T) {
 	if err != ErrInvalidID {
 		t.Errorf("FromString(invalid) err=%v, want %v", err, ErrInvalidID)
 	}
+	id, err := FromString("016ohoarc3q8dp1884ms1")
+	if id != nilID {
+		t.Errorf("FromString() =%v, want %v", id, nilID)
+	}
 }
 
 type jsonType struct {
