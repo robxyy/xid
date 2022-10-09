@@ -63,6 +63,23 @@ func TestIDPartsExtraction(t *testing.T) {
 	}
 }
 
+func TestPadding(t *testing.T) {
+	for i := 0; i < 100000; i++ {
+		wantBytes := make([]byte, 21)
+		wantBytes[20] = encoding[0]                        // 0
+		copy(wantBytes[0:14], []byte("016ohoarc3q8dp")[:]) // 016ohoarc3q8dp1884ms0
+		for j := 0; j < 6; j++ {
+			wantBytes[14+j] = encoding[rand.Intn(32)]
+		}
+		want := string(wantBytes)
+		id, _ := FromString(want)
+		got := id.String()
+		if got != want {
+			t.Errorf("String() = %v, want %v %v", got, want, wantBytes)
+		}
+	}
+}
+
 func TestNew(t *testing.T) {
 	// Generate 10 ids
 	ids := make([]ID, 10)
